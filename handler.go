@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"regexp"
 )
 
 const (
@@ -43,20 +42,6 @@ type CSRFHandler struct {
 	// This should be a better solution of customizing the options
 	// than a bunch of methods SetCookieExpiration(), etc.
 	baseCookie http.Cookie
-
-	// Slices of paths that are exempt from CSRF checks.
-	// They can be specified by...
-	// ...an exact path,
-	exemptPaths []string
-	// ...a regexp,
-	exemptRegexps []*regexp.Regexp
-	// ...or a glob (as used by path.Match()).
-	exemptGlobs []string
-	// ...or a custom matcher function
-	exemptFunc func(r *http.Request) bool
-
-	// All of those will be matched against Request.URL.Path,
-	// So they should take the leading slash into account
 }
 
 func defaultFailureHandler(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +118,7 @@ func (h *CSRFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctxSetToken(r, realToken)
 	}
 
-	if sContains(safeMethods, r.Method) || h.IsExempt(r) {
+	if sContains(safeMethods, r.Method) {
 		// short-circuit with a success for safe methods
 		h.handleSuccess(w, r)
 		return
