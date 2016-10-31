@@ -67,9 +67,3 @@ func New(options ...Options) *CSRFHandler {
 
 	return csrf
 }
-
-// The same as New(), but has an interface return type.
-func NewPure(handler http.Handler) http.Handler {
-	opts := &Options{successHandler: handler}
-	return New(*opts)
-}
