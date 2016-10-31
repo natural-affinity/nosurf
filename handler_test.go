@@ -15,9 +15,9 @@ func TestDefaultFailureHandler(t *testing.T) {
 
 	defaultFailureHandler(writer, req)
 
-	if writer.Code != FailureCode {
+	if writer.Code != http.StatusBadRequest {
 		t.Errorf("Wrong status code for defaultFailure Handler: "+
-			"expected %d, got %d", FailureCode, writer.Code)
+			"expected %d, got %d", http.StatusBadRequest, writer.Code)
 	}
 }
 
@@ -25,7 +25,7 @@ func TestSafeMethodsPass(t *testing.T) {
 	opts := Options{successHandler: http.HandlerFunc(succHand)}
 	handler := New(opts)
 
-	for _, method := range safeMethods {
+	for _, method := range handler.Options.SafeMethods {
 		req, err := http.NewRequest(method, "http://dummy.us", nil)
 
 		if err != nil {
@@ -81,7 +81,7 @@ func TestEmptyRefererFails(t *testing.T) {
 
 	hand.ServeHTTP(writer, req)
 
-	if writer.Code != FailureCode {
+	if writer.Code != http.StatusBadRequest {
 		t.Errorf("A POST request with no Referer should have failed with the code %d, but it didn't.",
 			writer.Code)
 	}
@@ -102,7 +102,7 @@ func TestDifferentOriginRefererFails(t *testing.T) {
 
 	hand.ServeHTTP(writer, req)
 
-	if writer.Code != FailureCode {
+	if writer.Code != http.StatusBadRequest {
 		t.Errorf("A POST request with a Referer from a different origin"+
 			"should have failed with the code %d, but it didn't.", writer.Code)
 	}
@@ -126,9 +126,9 @@ func TestNoTokenFails(t *testing.T) {
 
 	hand.ServeHTTP(writer, req)
 
-	if writer.Code != FailureCode {
+	if writer.Code != http.StatusBadRequest {
 		t.Errorf("The check should've failed with the code %d, but instead, it"+
-			" returned code %d", FailureCode, writer.Code)
+			" returned code %d", http.StatusBadRequest, writer.Code)
 	}
 
 	expectedContentType := "text/plain; charset=utf-8"
@@ -148,7 +148,7 @@ func TestWrongTokenFails(t *testing.T) {
 	vals := [][]string{
 		{"name", "Jolene"},
 		// this won't EVER be a valid value with the current scheme
-		{FormFieldName, "$#%^&"},
+		{hand.Options.FormFieldName, "$#%^&"},
 	}
 
 	req, err := http.NewRequest("POST", "http://dummy.us", formBodyR(vals))
@@ -159,9 +159,9 @@ func TestWrongTokenFails(t *testing.T) {
 
 	hand.ServeHTTP(writer, req)
 
-	if writer.Code != FailureCode {
+	if writer.Code != http.StatusBadRequest {
 		t.Errorf("The check should've failed with the code %d, but instead, it"+
-			" returned code %d", FailureCode, writer.Code)
+			" returned code %d", http.StatusBadRequest, writer.Code)
 	}
 
 	expectedContentType := "text/plain; charset=utf-8"
@@ -191,7 +191,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cookie := getRespCookie(resp, CookieName)
+	cookie := getRespCookie(resp, hand.Options.baseCookie.Name)
 	if cookie == nil {
 		t.Fatal("Cookie was not found in the response.")
 	}
@@ -200,7 +200,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 
 	vals := [][]string{
 		{"name", "Jolene"},
-		{FormFieldName, finalToken},
+		{hand.Options.FormFieldName, finalToken},
 	}
 
 	// Test usual POST
@@ -283,7 +283,7 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cookie := getRespCookie(resp, CookieName)
+	cookie := getRespCookie(resp, hand.Options.baseCookie.Name)
 	if cookie == nil {
 		t.Fatal("Cookie was not found in the response.")
 	}
@@ -292,7 +292,7 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 
 	vals := [][]string{
 		{"name", "Jolene"},
-		{FormFieldName, "a very wrong value"},
+		{hand.Options.FormFieldName, "a very wrong value"},
 	}
 
 	req, err := http.NewRequest("POST", server.URL, formBodyR(vals))
@@ -300,7 +300,7 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set(HeaderName, finalToken)
+	req.Header.Set(hand.Options.HeaderName, finalToken)
 	req.AddCookie(cookie)
 
 	resp, err = http.DefaultClient.Do(req)

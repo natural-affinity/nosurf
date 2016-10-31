@@ -5,22 +5,6 @@ import (
 	"net/http"
 )
 
-const (
-	// the name of CSRF cookie
-	CookieName = "csrf_token"
-	// the name of the form field
-	FormFieldName = "csrf_token"
-	// the name of CSRF header
-	HeaderName = "X-CSRF-Token"
-	// the HTTP status code for the default failure handler
-	FailureCode = 400
-
-	// Max-Age in seconds for the default base cookie. 365 days.
-	MaxAge = 365 * 24 * 60 * 60
-)
-
-var safeMethods = []string{"GET", "HEAD", "OPTIONS", "TRACE"}
-
 // reasons for CSRF check failures
 var (
 	ErrNoReferer  = errors.New("A secure request contained no Referer or its value was malformed")
@@ -35,28 +19,17 @@ type Middleware struct {
 	Options Options
 }
 
-type CSRFHandler struct {
-	// Handlers that CSRFHandler wraps.
-	successHandler http.Handler
-
-	failureHandler http.Handler
-
-	// The base cookie that CSRF cookies will be built upon.
-	// This should be a better solution of customizing the options
-	// than a bunch of methods SetCookieExpiration(), etc.
-	baseCookie http.Cookie
-}
-
 // Options is a struct for specifying configuration options for the middleware.
 type Options struct {
 	SafeMethods    []string
+	HeaderName     string
+	FormFieldName  string
 	successHandler http.Handler
 	failureHandler http.Handler
 	baseCookie     *http.Cookie
 }
 
-// Constructs a new CSRFHandler that calls
-// the specified handler if the CSRF check succeeds.
+// New Constructs a configurable CSRF Middleware that calls desired handler
 func New(options ...Options) *Middleware {
 	var opts Options
 	if len(options) == 0 {
@@ -67,16 +40,25 @@ func New(options ...Options) *Middleware {
 
 	if len(opts.SafeMethods) == 0 {
 		opts.SafeMethods = []string{"GET", "HEAD", "OPTIONS", "TRACE"}
-	}
+	} // default safe methods
+
+	if opts.HeaderName == "" {
+		opts.HeaderName = "X-CSRF-Token"
+	} // default header name
+
+	if opts.FormFieldName == "" {
+		opts.FormFieldName = "csrf_token"
+	} // default form field name
 
 	if opts.failureHandler == nil {
 		opts.failureHandler = http.HandlerFunc(defaultFailureHandler)
-	}
+	} // default failure handler
 
 	if opts.baseCookie == nil {
 		opts.baseCookie = &http.Cookie{}
-		opts.baseCookie.MaxAge = MaxAge
-	}
+		opts.baseCookie.Name = "csrf_token"
+		opts.baseCookie.MaxAge = 365 * 24 * 60 * 60
+	} // default cookie (duration)
 
 	return &Middleware{Options: opts}
 }

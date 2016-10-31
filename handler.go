@@ -8,26 +8,26 @@ import (
 )
 
 func defaultFailureHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "", FailureCode)
+	http.Error(w, "", http.StatusBadRequest)
 }
 
 // Extracts the "sent" token from the request
 // and returns an unmasked version of it
-func extractToken(r *http.Request) []byte {
+func extractToken(r *http.Request, headerName string, formFieldName string) []byte {
 	var sentToken string
 
 	// Prefer the header over form value
-	sentToken = r.Header.Get(HeaderName)
+	sentToken = r.Header.Get(headerName)
 
 	// Then POST values
 	if len(sentToken) == 0 {
-		sentToken = r.PostFormValue(FormFieldName)
+		sentToken = r.PostFormValue(formFieldName)
 	}
 
 	// If all else fails, try a multipart value.
 	// PostFormValue() will already have called ParseMultipartForm()
 	if len(sentToken) == 0 && r.MultipartForm != nil {
-		vals := r.MultipartForm.Value[FormFieldName]
+		vals := r.MultipartForm.Value[formFieldName]
 		if len(vals) != 0 {
 			sentToken = vals[0]
 		}
@@ -43,7 +43,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var realToken []byte
 
-	tokenCookie, err := r.Cookie(CookieName)
+	tokenCookie, err := r.Cookie(m.Options.baseCookie.Name)
 	if err == nil {
 		realToken = b64decode(tokenCookie.Value)
 	}
@@ -62,7 +62,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctxSetToken(r, realToken)
 	}
 
-	if sContains(safeMethods, r.Method) {
+	if sContains(m.Options.SafeMethods, r.Method) {
 		// short-circuit with a success for safe methods
 		m.handleSuccess(w, r)
 		return
@@ -91,7 +91,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Finally, we check the token itself.
-	sentToken := extractToken(r)
+	sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
 
 	if !verifyToken(realToken, sentToken) {
 		ctxSetReason(r, ErrBadToken)
@@ -129,7 +129,6 @@ func (m *Middleware) setTokenCookie(w http.ResponseWriter, r *http.Request, toke
 	ctxSetToken(r, token)
 
 	cookie := m.Options.baseCookie
-	cookie.Name = CookieName
 	cookie.Value = b64encode(token)
 
 	http.SetCookie(w, cookie)
