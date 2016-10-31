@@ -77,7 +77,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// we assume it's not specified
 		if err != nil || referer.String() == "" {
 			ctxSetReason(r, ErrNoReferer)
-			m.handleFailure(w, r)
+			m.Options.failureHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -85,7 +85,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// we have another error for that
 		if !sameOrigin(referer, r.URL) {
 			ctxSetReason(r, ErrBadReferer)
-			m.handleFailure(w, r)
+			m.Options.failureHandler.ServeHTTP(w, r)
 			return
 		}
 	}
@@ -95,18 +95,12 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !verifyToken(realToken, sentToken) {
 		ctxSetReason(r, ErrBadToken)
-		m.handleFailure(w, r)
+		m.Options.failureHandler.ServeHTTP(w, r)
 		return
 	}
 
 	// Everything else passed, handle the success.
 	m.Options.successHandler.ServeHTTP(w, r)
-}
-
-// Same applies here: h.ServeHTTP() sets the failure reason, the token,
-// and only then calls handleFailure()
-func (m *Middleware) handleFailure(w http.ResponseWriter, r *http.Request) {
-	m.Options.failureHandler.ServeHTTP(w, r)
 }
 
 // Generates a new token, sets it on the given request and returns it
