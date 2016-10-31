@@ -30,6 +30,11 @@ var (
 		" received in a form/header.")
 )
 
+// Middleware for CSRF Protection
+type Middleware struct {
+	Options Options
+}
+
 type CSRFHandler struct {
 	// Handlers that CSRFHandler wraps.
 	successHandler http.Handler
@@ -44,12 +49,15 @@ type CSRFHandler struct {
 
 // Options is a struct for specifying configuration options for the middleware.
 type Options struct {
+	SafeMethods    []string
 	successHandler http.Handler
+	failureHandler http.Handler
+	baseCookie     *http.Cookie
 }
 
 // Constructs a new CSRFHandler that calls
 // the specified handler if the CSRF check succeeds.
-func New(options ...Options) *CSRFHandler {
+func New(options ...Options) *Middleware {
 	var opts Options
 	if len(options) == 0 {
 		opts = Options{}
@@ -57,13 +65,18 @@ func New(options ...Options) *CSRFHandler {
 		opts = options[0]
 	}
 
-	baseCookie := http.Cookie{}
-	baseCookie.MaxAge = MaxAge
-
-	csrf := &CSRFHandler{successHandler: opts.successHandler,
-		failureHandler: http.HandlerFunc(defaultFailureHandler),
-		baseCookie:     baseCookie,
+	if len(opts.SafeMethods) == 0 {
+		opts.SafeMethods = []string{"GET", "HEAD", "OPTIONS", "TRACE"}
 	}
 
-	return csrf
+	if opts.failureHandler == nil {
+		opts.failureHandler = http.HandlerFunc(defaultFailureHandler)
+	}
+
+	if opts.baseCookie == nil {
+		opts.baseCookie = &http.Cookie{}
+		opts.baseCookie.MaxAge = MaxAge
+	}
+
+	return &Middleware{Options: opts}
 }

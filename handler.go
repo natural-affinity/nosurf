@@ -36,7 +36,7 @@ func extractToken(r *http.Request) []byte {
 	return b64decode(sentToken)
 }
 
-func (h *CSRFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r = addNosurfContext(r)
 	defer ctxClear(r)
 	w.Header().Add("Vary", "Cookie")
@@ -57,14 +57,14 @@ func (h *CSRFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// As a consequence, CSRF check will fail when comparing the tokens later on,
 	// so we don't have to fail it just yet.
 	if len(realToken) != tokenLength {
-		h.RegenerateToken(w, r)
+		m.RegenerateToken(w, r)
 	} else {
 		ctxSetToken(r, realToken)
 	}
 
 	if sContains(safeMethods, r.Method) {
 		// short-circuit with a success for safe methods
-		h.handleSuccess(w, r)
+		m.handleSuccess(w, r)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *CSRFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// we assume it's not specified
 		if err != nil || referer.String() == "" {
 			ctxSetReason(r, ErrNoReferer)
-			h.handleFailure(w, r)
+			m.handleFailure(w, r)
 			return
 		}
 
@@ -85,7 +85,7 @@ func (h *CSRFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// we have another error for that
 		if !sameOrigin(referer, r.URL) {
 			ctxSetReason(r, ErrBadReferer)
-			h.handleFailure(w, r)
+			m.handleFailure(w, r)
 			return
 		}
 	}
@@ -95,55 +95,55 @@ func (h *CSRFHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !verifyToken(realToken, sentToken) {
 		ctxSetReason(r, ErrBadToken)
-		h.handleFailure(w, r)
+		m.handleFailure(w, r)
 		return
 	}
 
 	// Everything else passed, handle the success.
-	h.handleSuccess(w, r)
+	m.handleSuccess(w, r)
 }
 
 // handleSuccess simply calls the successHandler.
 // Everything else, like setting a token in the context
 // is taken care of by h.ServeHTTP()
-func (h *CSRFHandler) handleSuccess(w http.ResponseWriter, r *http.Request) {
-	h.successHandler.ServeHTTP(w, r)
+func (m *Middleware) handleSuccess(w http.ResponseWriter, r *http.Request) {
+	m.Options.successHandler.ServeHTTP(w, r)
 }
 
 // Same applies here: h.ServeHTTP() sets the failure reason, the token,
 // and only then calls handleFailure()
-func (h *CSRFHandler) handleFailure(w http.ResponseWriter, r *http.Request) {
-	h.failureHandler.ServeHTTP(w, r)
+func (m *Middleware) handleFailure(w http.ResponseWriter, r *http.Request) {
+	m.Options.failureHandler.ServeHTTP(w, r)
 }
 
 // Generates a new token, sets it on the given request and returns it
-func (h *CSRFHandler) RegenerateToken(w http.ResponseWriter, r *http.Request) string {
+func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) string {
 	token := generateToken()
-	h.setTokenCookie(w, r, token)
+	m.setTokenCookie(w, r, token)
 
 	return Token(r)
 }
 
-func (h *CSRFHandler) setTokenCookie(w http.ResponseWriter, r *http.Request, token []byte) {
+func (m *Middleware) setTokenCookie(w http.ResponseWriter, r *http.Request, token []byte) {
 	// ctxSetToken() does the masking for us
 	ctxSetToken(r, token)
 
-	cookie := h.baseCookie
+	cookie := m.Options.baseCookie
 	cookie.Name = CookieName
 	cookie.Value = b64encode(token)
 
-	http.SetCookie(w, &cookie)
+	http.SetCookie(w, cookie)
 
 }
 
 // Sets the handler to call in case the CSRF check
 // fails. By default it's defaultFailureHandler.
-func (h *CSRFHandler) SetFailureHandler(handler http.Handler) {
-	h.failureHandler = handler
+func (m *Middleware) SetFailureHandler(handler http.Handler) {
+	m.Options.failureHandler = handler
 }
 
 // Sets the base cookie to use when building a CSRF token cookie
 // This way you can specify the Domain, Path, HttpOnly, Secure, etc.
-func (h *CSRFHandler) SetBaseCookie(cookie http.Cookie) {
-	h.baseCookie = cookie
+func (m *Middleware) SetBaseCookie(cookie *http.Cookie) {
+	m.Options.baseCookie = cookie
 }
