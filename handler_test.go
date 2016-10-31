@@ -68,10 +68,11 @@ func TestContextIsAccessible(t *testing.T) {
 }
 
 func TestEmptyRefererFails(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	opts := Options{
+		successHandler: http.HandlerFunc(succHand),
+		failureHandler: correctReason(t, ErrNoReferer),
+	}
 	hand := New(opts)
-	fhand := correctReason(t, ErrNoReferer)
-	hand.SetFailureHandler(fhand)
 
 	req, err := http.NewRequest("POST", "https://dummy.us/", strings.NewReader("a=b"))
 	if err != nil {
@@ -88,10 +89,11 @@ func TestEmptyRefererFails(t *testing.T) {
 }
 
 func TestDifferentOriginRefererFails(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	opts := Options{
+		successHandler: http.HandlerFunc(succHand),
+		failureHandler: correctReason(t, ErrBadReferer),
+	}
 	hand := New(opts)
-	fhand := correctReason(t, ErrBadReferer)
-	hand.SetFailureHandler(fhand)
 
 	req, err := http.NewRequest("POST", "https://dummy.us/", strings.NewReader("a=b"))
 	if err != nil {
@@ -109,10 +111,11 @@ func TestDifferentOriginRefererFails(t *testing.T) {
 }
 
 func TestNoTokenFails(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	opts := Options{
+		successHandler: http.HandlerFunc(succHand),
+		failureHandler: correctReason(t, ErrBadToken),
+	}
 	hand := New(opts)
-	fhand := correctReason(t, ErrBadToken)
-	hand.SetFailureHandler(fhand)
 
 	vals := [][]string{
 		{"name", "Jolene"},
@@ -140,10 +143,11 @@ func TestNoTokenFails(t *testing.T) {
 }
 
 func TestWrongTokenFails(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	opts := Options{
+		successHandler: http.HandlerFunc(succHand),
+		failureHandler: correctReason(t, ErrBadToken),
+	}
 	hand := New(opts)
-	fhand := correctReason(t, ErrBadToken)
-	hand.SetFailureHandler(fhand)
 
 	vals := [][]string{
 		{"name", "Jolene"},
@@ -176,11 +180,13 @@ func TestWrongTokenFails(t *testing.T) {
 // Since it's much easier to get the cookie
 // from a normal http.Response than from the recorder
 func TestCorrectTokenPasses(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	opts := Options{
+		successHandler: http.HandlerFunc(succHand),
+		failureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("Test failed. Reason: %v", Reason(r))
+		}),
+	}
 	hand := New(opts)
-	hand.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("Test failed. Reason: %v", Reason(r))
-	}))
 
 	server := httptest.NewServer(hand)
 	defer server.Close()

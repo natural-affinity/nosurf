@@ -64,7 +64,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if sContains(m.Options.SafeMethods, r.Method) {
 		// short-circuit with a success for safe methods
-		m.handleSuccess(w, r)
+		m.Options.successHandler.ServeHTTP(w, r)
 		return
 	}
 
@@ -100,13 +100,6 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Everything else passed, handle the success.
-	m.handleSuccess(w, r)
-}
-
-// handleSuccess simply calls the successHandler.
-// Everything else, like setting a token in the context
-// is taken care of by h.ServeHTTP()
-func (m *Middleware) handleSuccess(w http.ResponseWriter, r *http.Request) {
 	m.Options.successHandler.ServeHTTP(w, r)
 }
 
@@ -133,16 +126,4 @@ func (m *Middleware) setTokenCookie(w http.ResponseWriter, r *http.Request, toke
 
 	http.SetCookie(w, cookie)
 
-}
-
-// Sets the handler to call in case the CSRF check
-// fails. By default it's defaultFailureHandler.
-func (m *Middleware) SetFailureHandler(handler http.Handler) {
-	m.Options.failureHandler = handler
-}
-
-// Sets the base cookie to use when building a CSRF token cookie
-// This way you can specify the Domain, Path, HttpOnly, Secure, etc.
-func (m *Middleware) SetBaseCookie(cookie *http.Cookie) {
-	m.Options.baseCookie = cookie
 }
