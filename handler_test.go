@@ -22,7 +22,8 @@ func TestDefaultFailureHandler(t *testing.T) {
 }
 
 func TestSafeMethodsPass(t *testing.T) {
-	handler := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	handler := New(opts)
 
 	for _, method := range safeMethods {
 		req, err := http.NewRequest(method, "http://dummy.us", nil)
@@ -56,7 +57,8 @@ func TestContextIsAccessible(t *testing.T) {
 		}
 	}
 
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 
 	// we need a request that passes. Let's just use a safe method for that.
 	req := dummyGet()
@@ -66,7 +68,8 @@ func TestContextIsAccessible(t *testing.T) {
 }
 
 func TestEmptyRefererFails(t *testing.T) {
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 	fhand := correctReason(t, ErrNoReferer)
 	hand.SetFailureHandler(fhand)
 
@@ -85,7 +88,8 @@ func TestEmptyRefererFails(t *testing.T) {
 }
 
 func TestDifferentOriginRefererFails(t *testing.T) {
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 	fhand := correctReason(t, ErrBadReferer)
 	hand.SetFailureHandler(fhand)
 
@@ -105,7 +109,8 @@ func TestDifferentOriginRefererFails(t *testing.T) {
 }
 
 func TestNoTokenFails(t *testing.T) {
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 	fhand := correctReason(t, ErrBadToken)
 	hand.SetFailureHandler(fhand)
 
@@ -135,7 +140,8 @@ func TestNoTokenFails(t *testing.T) {
 }
 
 func TestWrongTokenFails(t *testing.T) {
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 	fhand := correctReason(t, ErrBadToken)
 	hand.SetFailureHandler(fhand)
 
@@ -170,7 +176,8 @@ func TestWrongTokenFails(t *testing.T) {
 // Since it's much easier to get the cookie
 // from a normal http.Response than from the recorder
 func TestCorrectTokenPasses(t *testing.T) {
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 	hand.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("Test failed. Reason: %v", Reason(r))
 	}))
@@ -265,7 +272,8 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 	// That way, if it succeeds,
 	// it will mean that it prefered the header.
 
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 
 	server := httptest.NewServer(hand)
 	defer server.Close()
@@ -307,7 +315,8 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 }
 
 func TestAddsVaryCookieHeader(t *testing.T) {
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 	writer := httptest.NewRecorder()
 	req := dummyGet()
 

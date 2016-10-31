@@ -20,7 +20,8 @@ func TestContextIsAccessibleWithContext(t *testing.T) {
 		}
 	}
 
-	hand := New(http.HandlerFunc(succHand))
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
 
 	// we need a request that passes. Let's just use a safe method for that.
 	req := dummyGet()
