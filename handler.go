@@ -115,9 +115,9 @@ func (m *Middleware) setTokenCookie(w http.ResponseWriter, r *http.Request, toke
 	// ctxSetToken() does the masking for us
 	ctxSetToken(r, token)
 
-	cookie := m.Options.baseCookie
+	// Copy baseCookie
+	cookie := *m.Options.baseCookie
 	cookie.Value = b64encode(token)
 
-	http.SetCookie(w, cookie)
-
+	http.SetCookie(w, &cookie)
 }
