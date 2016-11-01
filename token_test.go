@@ -21,7 +21,7 @@ func TestChecksForPRNG(t *testing.T) {
 		}
 	}()
 
-	checkForPRNG()
+	generateToken(32)
 }
 
 func TestGeneratesAValidToken(t *testing.T) {
