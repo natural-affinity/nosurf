@@ -53,8 +53,9 @@ func TestOtpUnmasksCorrectly(t *testing.T) {
 
 func TestMasksTokenCorrectly(t *testing.T) {
 	// needs to be of tokenLength
+	tokenLength := 32
 	token := []byte("12345678901234567890123456789012")
-	fullToken := maskToken(token)
+	fullToken := maskToken(token, tokenLength)
 
 	if len(fullToken) != 2*tokenLength {
 		t.Errorf("len(fullToken) is not %d, but %d", 2*tokenLength, len(fullToken))
@@ -72,10 +73,11 @@ func TestMasksTokenCorrectly(t *testing.T) {
 }
 
 func TestUnmasksTokenCorrectly(t *testing.T) {
+	tokenLength := 32
 	token := []byte("12345678901234567890123456789012")
-	fullToken := maskToken(token)
+	fullToken := maskToken(token, tokenLength)
 
-	decToken := unmaskToken(fullToken)
+	decToken := unmaskToken(fullToken, tokenLength)
 
 	if !bytes.Equal(decToken, token) {
 		t.Errorf("Unmasked token is invalid: expected %v, got %v", token, decToken)

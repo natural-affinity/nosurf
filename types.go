@@ -22,6 +22,7 @@ type Middleware struct {
 // Options is a struct for specifying configuration options for the middleware.
 type Options struct {
 	SafeMethods    []string
+	TokenLength    int
 	HeaderName     string
 	FormFieldName  string
 	successHandler http.Handler
@@ -41,6 +42,10 @@ func New(options ...Options) *Middleware {
 	if len(opts.SafeMethods) == 0 {
 		opts.SafeMethods = []string{"GET", "HEAD", "OPTIONS", "TRACE"}
 	} // default safe methods
+
+	if opts.TokenLength == 0 {
+		opts.TokenLength = 32
+	} // default token length (32 bytes)
 
 	if opts.HeaderName == "" {
 		opts.HeaderName = "X-CSRF-Token"

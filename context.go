@@ -45,9 +45,9 @@ func Reason(req *http.Request) error {
 func ctxClear(_ *http.Request) {
 }
 
-func ctxSetToken(req *http.Request, token []byte) {
+func ctxSetToken(req *http.Request, token []byte, tokenLength int) {
 	ctx := req.Context().Value(nosurfKey).(*csrfContext)
-	ctx.token = b64encode(maskToken(token))
+	ctx.token = b64encode(maskToken(token, tokenLength))
 }
 
 func ctxSetReason(req *http.Request, reason error) {

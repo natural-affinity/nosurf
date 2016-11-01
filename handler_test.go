@@ -1,6 +1,7 @@
 package nosurf
 
 import (
+	"context"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -185,6 +186,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 		failureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Errorf("Test failed. Reason: %v", Reason(r))
 		}),
+		TokenLength: 32,
 	}
 	hand := New(opts)
 
@@ -202,7 +204,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 		t.Fatal("Cookie was not found in the response.")
 	}
 
-	finalToken := b64encode(maskToken(b64decode(cookie.Value)))
+	finalToken := b64encode(maskToken(b64decode(cookie.Value), opts.TokenLength))
 
 	vals := [][]string{
 		{"name", "Jolene"},
@@ -278,7 +280,10 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 	// That way, if it succeeds,
 	// it will mean that it prefered the header.
 
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	opts := Options{
+		successHandler: http.HandlerFunc(succHand),
+		TokenLength:    32,
+	}
 	hand := New(opts)
 
 	server := httptest.NewServer(hand)
@@ -294,7 +299,7 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 		t.Fatal("Cookie was not found in the response.")
 	}
 
-	finalToken := b64encode(maskToken(b64decode(cookie.Value)))
+	finalToken := b64encode(maskToken(b64decode(cookie.Value), opts.TokenLength))
 
 	vals := [][]string{
 		{"name", "Jolene"},
@@ -331,4 +336,25 @@ func TestAddsVaryCookieHeader(t *testing.T) {
 	if !sContains(writer.Header()["Vary"], "Cookie") {
 		t.Errorf("CSRFHandler didn't add a `Vary: Cookie` header.")
 	}
+}
+
+// Confusing test name. Tests that nosurf's context is accessible
+// when a request with golang's context is passed into Token().
+func TestContextIsAccessibleWithGo17Context(t *testing.T) {
+	succHand := func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), "dummykey", "dummyval"))
+		token := Token(r)
+		if token == "" {
+			t.Errorf("Token is inaccessible in the success handler")
+		}
+	}
+
+	opts := Options{successHandler: http.HandlerFunc(succHand)}
+	hand := New(opts)
+
+	// we need a request that passes. Let's just use a safe method for that.
+	req := dummyGet()
+	writer := httptest.NewRecorder()
+
+	hand.ServeHTTP(writer, req)
 }

@@ -3,6 +3,7 @@
 package nosurf
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 )
@@ -56,10 +57,10 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//
 	// As a consequence, CSRF check will fail when comparing the tokens later on,
 	// so we don't have to fail it just yet.
-	if len(realToken) != tokenLength {
+	if len(realToken) != m.Options.TokenLength {
 		m.RegenerateToken(w, r)
 	} else {
-		ctxSetToken(r, realToken)
+		ctxSetToken(r, realToken, m.Options.TokenLength)
 	}
 
 	if sContains(m.Options.SafeMethods, r.Method) {
@@ -93,7 +94,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Finally, we check the token itself.
 	sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
 
-	if !verifyToken(realToken, sentToken) {
+	if !verifyToken(realToken, sentToken, m.Options.TokenLength) {
 		ctxSetReason(r, ErrBadToken)
 		m.Options.failureHandler.ServeHTTP(w, r)
 		return
@@ -105,7 +106,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Generates a new token, sets it on the given request and returns it
 func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) string {
-	token := generateToken()
+	token := generateToken(m.Options.TokenLength)
 	m.setTokenCookie(w, r, token)
 
 	return Token(r)
@@ -113,11 +114,15 @@ func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) str
 
 func (m *Middleware) setTokenCookie(w http.ResponseWriter, r *http.Request, token []byte) {
 	// ctxSetToken() does the masking for us
-	ctxSetToken(r, token)
+	ctxSetToken(r, token, m.Options.TokenLength)
 
-	// Copy baseCookie
+	// Copy baseCookie (de-reference: shallow copy)
 	cookie := *m.Options.baseCookie
 	cookie.Value = b64encode(token)
 
 	http.SetCookie(w, &cookie)
+}
+
+func addNosurfContext(r *http.Request) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), nosurfKey, &csrfContext{}))
 }
