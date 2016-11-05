@@ -57,11 +57,12 @@ func ctxSetToken(req *http.Request, token []byte, tokenLength int) {
 	ctx.token = b64encode(maskToken(token, tokenLength))
 }
 
-func ctxSetReason(req *http.Request, reason error) {
+func ctxSetReason(req *http.Request, reason error) error {
 	ctx := req.Context().Value(nosurfKey).(*csrfContext)
 	if ctx.token == "" {
 		panic("Reason should never be set when there's no token in the context yet.")
 	}
 
 	ctx.reason = reason
+	return reason
 }

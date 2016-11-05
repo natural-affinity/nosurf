@@ -27,6 +27,7 @@ func (m *Middleware) Handler(h http.Handler) http.Handler {
 // Validate CSRF Token
 func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	realToken := FromCookie(r, m.Options.baseCookie.Name)
+	sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
 
 	// If the length of the real token isn't what it should be,
 	// it has either been tampered with,
@@ -46,27 +47,18 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	} // short-circuit with a success for safe methods
 
-	// if the request is secure, we enforce origin check
-	// for referer to prevent MITM of http->https requests
-	if r.URL.Scheme == "https" {
-		if err := validateReferer(r); err != nil {
-			ctxSetReason(r, err)
-			return err
-		}
-	}
-
-	// Finally, we check the token itself.
-	sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
+	if err := validateReferer(r); err != nil {
+		return ctxSetReason(r, err)
+	} // ensure referrer is valid for HTTPS
 
 	if !verifyToken(realToken, sentToken, m.Options.TokenLength) {
-		ctxSetReason(r, ErrBadToken)
-		return ErrBadToken
-	}
+		return ctxSetReason(r, ErrBadToken)
+	} // ensure token is valid
 
 	return nil
 }
 
-// RegenerateToken creates a new base token on cookie, sets context and returns it
+// RegenerateToken creates a new base token on cookie, sets context (returns masked)
 func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) string {
 	token := generateToken(m.Options.TokenLength)
 	ctxSetToken(r, token, m.Options.TokenLength)

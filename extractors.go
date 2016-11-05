@@ -21,13 +21,8 @@ func FromHeader(r *http.Request, name string) []byte {
 // FromForm (extract from form)
 func FromForm(r *http.Request, name string) []byte {
 	token := r.PostFormValue(name)
-	return b64decode(token)
-}
 
-// FromMultiForm (extract from multi-part form)
-func FromMultiForm(r *http.Request, name string) []byte {
-	var token string
-	if r.MultipartForm != nil {
+	if len(token) == 0 && r.MultipartForm != nil {
 		values := r.MultipartForm.Value[name]
 		if len(values) != 0 {
 			token = values[0]
@@ -48,10 +43,6 @@ func extractToken(r *http.Request, headerName string, formFieldName string) []by
 	// Then POST values
 	if len(sentToken) == 0 {
 		sentToken = FromForm(r, formFieldName)
-	}
-
-	if len(sentToken) == 0 {
-		sentToken = FromMultiForm(r, formFieldName)
 	}
 
 	return sentToken
