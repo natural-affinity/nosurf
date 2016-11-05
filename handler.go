@@ -2,10 +2,7 @@
 // mitigates Cross-Site Request Forgery Attacks.
 package nosurf
 
-import (
-	"net/http"
-	"net/url"
-)
+import "net/http"
 
 func defaultFailureHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "", http.StatusBadRequest)
@@ -52,20 +49,9 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	// if the request is secure, we enforce origin check
 	// for referer to prevent MITM of http->https requests
 	if r.URL.Scheme == "https" {
-		referer, err := url.Parse(r.Header.Get("Referer"))
-
-		// if we can't parse the referer or it's empty,
-		// we assume it's not specified
-		if err != nil || referer.String() == "" {
-			ctxSetReason(r, ErrNoReferer)
-			return ErrNoReferer
-		}
-
-		// if the referer doesn't share origin with the request URL,
-		// we have another error for that
-		if !sameOrigin(referer, r.URL) {
-			ctxSetReason(r, ErrBadReferer)
-			return ErrBadReferer
+		if err := validateReferer(r); err != nil {
+			ctxSetReason(r, err)
+			return err
 		}
 	}
 
@@ -80,7 +66,7 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// RegenerateToken creates a new base token on cookie
+// RegenerateToken creates a new base token on cookie, sets context and returns it
 func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) string {
 	token := generateToken(m.Options.TokenLength)
 	ctxSetToken(r, token, m.Options.TokenLength)
