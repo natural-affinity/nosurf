@@ -30,8 +30,7 @@ func (m *Middleware) Handler(h http.Handler) http.Handler {
 
 // Validate CSRF Token
 func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
-	var realToken []byte
-	realToken = FromCookie(r, m.Options.baseCookie.Name)
+	realToken := FromCookie(r, m.Options.baseCookie.Name)
 
 	// If the length of the real token isn't what it should be,
 	// it has either been tampered with,
@@ -48,9 +47,8 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if sContains(m.Options.SafeMethods, r.Method) {
-		// short-circuit with a success for safe methods
 		return nil
-	}
+	} // short-circuit with a success for safe methods
 
 	// if the request is secure, we enforce origin check
 	// for referer to prevent MITM of http->https requests
@@ -83,23 +81,17 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Generates a new token, sets it on the given request and returns it
+// RegenerateToken creates a new base token on cookie
 func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) string {
 	token := generateToken(m.Options.TokenLength)
-	m.setTokenCookie(w, r, token)
-
-	return Token(r)
-}
-
-func (m *Middleware) setTokenCookie(w http.ResponseWriter, r *http.Request, token []byte) {
-	// ctxSetToken() does the masking for us
 	ctxSetToken(r, token, m.Options.TokenLength)
 
 	// Copy baseCookie (de-reference: shallow copy)
 	cookie := *m.Options.baseCookie
 	cookie.Value = b64encode(token)
-
 	http.SetCookie(w, &cookie)
+
+	return Token(r)
 }
 
 func addNosurfContext(r *http.Request) *http.Request {
