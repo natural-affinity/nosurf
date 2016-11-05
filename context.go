@@ -2,7 +2,10 @@
 
 package nosurf
 
-import "net/http"
+import (
+	"context"
+	"net/http"
+)
 
 type ctxKey int
 
@@ -16,6 +19,10 @@ type csrfContext struct {
 	token string
 	// reason for the failure of CSRF check
 	reason error
+}
+
+func ctxCreate(r *http.Request) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), nosurfKey, &csrfContext{}))
 }
 
 // Token takes an HTTP request and returns

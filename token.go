@@ -48,22 +48,6 @@ func b64decode(data string) []byte {
 	return decoded
 }
 
-// VerifyToken verifies the sent token equals the real one
-// and returns a bool value indicating if tokens are equal.
-// Supports masked tokens. realToken comes from Token(r) and
-// sentToken is token sent unusual way.
-func VerifyToken(realToken, sentToken string, length int) bool {
-	r := b64decode(realToken)
-	if len(r) == 2*length {
-		r = unmaskToken(r, length)
-	}
-	s := b64decode(sentToken)
-	if len(s) == 2*length {
-		s = unmaskToken(s, length)
-	}
-	return subtle.ConstantTimeCompare(r, s) == 1
-}
-
 func verifyToken(realToken, sentToken []byte, length int) bool {
 	realN := len(realToken)
 	sentN := len(sentToken)

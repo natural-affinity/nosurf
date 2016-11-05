@@ -3,7 +3,6 @@
 package nosurf
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 )
@@ -15,7 +14,7 @@ func defaultFailureHandler(w http.ResponseWriter, r *http.Request) {
 // Handler for middleware
 func (m *Middleware) Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r = addNosurfContext(r)
+		r = ctxCreate(r)
 		defer ctxClear(r)
 		w.Header().Add("Vary", "Cookie")
 
@@ -92,8 +91,4 @@ func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) str
 	http.SetCookie(w, &cookie)
 
 	return Token(r)
-}
-
-func addNosurfContext(r *http.Request) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), nosurfKey, &csrfContext{}))
 }
