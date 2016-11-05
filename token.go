@@ -73,9 +73,9 @@ func verifyToken(realToken, sentToken []byte, length int) bool {
 
 	if realN == length && sentN == 2*length {
 		return verifyMasked(realToken, sentToken, length)
-	} else {
-		return false
 	}
+
+	return false
 }
 
 // Verifies the masked token

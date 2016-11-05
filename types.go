@@ -8,10 +8,8 @@ import (
 // reasons for CSRF check failures
 var (
 	ErrNoReferer  = errors.New("A secure request contained no Referer or its value was malformed")
-	ErrBadReferer = errors.New("A secure request's Referer comes from a different Origin" +
-		" from the request's URL")
-	ErrBadToken = errors.New("The CSRF token in the cookie doesn't match the one" +
-		" received in a form/header.")
+	ErrBadReferer = errors.New("A secure request's Referer comes from a different Origin from the request's URL")
+	ErrBadToken   = errors.New("The CSRF token in the cookie doesn't match the one received in a form/header.")
 )
 
 // Middleware for CSRF Protection

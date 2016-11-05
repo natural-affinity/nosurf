@@ -12,31 +12,6 @@ func defaultFailureHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "", http.StatusBadRequest)
 }
 
-// Extracts the "sent" token from the request
-// and returns an unmasked version of it
-func extractToken(r *http.Request, headerName string, formFieldName string) []byte {
-	var sentToken string
-
-	// Prefer the header over form value
-	sentToken = r.Header.Get(headerName)
-
-	// Then POST values
-	if len(sentToken) == 0 {
-		sentToken = r.PostFormValue(formFieldName)
-	}
-
-	// If all else fails, try a multipart value.
-	// PostFormValue() will already have called ParseMultipartForm()
-	if len(sentToken) == 0 && r.MultipartForm != nil {
-		vals := r.MultipartForm.Value[formFieldName]
-		if len(vals) != 0 {
-			sentToken = vals[0]
-		}
-	}
-
-	return b64decode(sentToken)
-}
-
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r = addNosurfContext(r)
 	defer ctxClear(r)
