@@ -23,7 +23,6 @@ type Options struct {
 	TokenLength    int
 	HeaderName     string
 	FormFieldName  string
-	successHandler http.Handler
 	failureHandler http.Handler
 	baseCookie     *http.Cookie
 }

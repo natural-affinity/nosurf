@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/justinas/alice"
 )
 
 func TestDefaultFailureHandler(t *testing.T) {
@@ -23,8 +25,7 @@ func TestDefaultFailureHandler(t *testing.T) {
 }
 
 func TestSafeMethodsPass(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
-	handler := New(opts)
+	handler := New()
 
 	for _, method := range handler.Options.SafeMethods {
 		req, err := http.NewRequest(method, "http://dummy.us", nil)
@@ -34,7 +35,8 @@ func TestSafeMethodsPass(t *testing.T) {
 		}
 
 		writer := httptest.NewRecorder()
-		handler.ServeHTTP(writer, req)
+		chain := alice.New(handler.Handler).Then(http.HandlerFunc(succHand))
+		chain.ServeHTTP(writer, req)
 
 		expected := 200
 
@@ -58,19 +60,18 @@ func TestContextIsAccessible(t *testing.T) {
 		}
 	}
 
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
-	hand := New(opts)
+	hand := New()
 
 	// we need a request that passes. Let's just use a safe method for that.
 	req := dummyGet()
 	writer := httptest.NewRecorder()
 
-	hand.ServeHTTP(writer, req)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
 }
 
 func TestEmptyRefererFails(t *testing.T) {
 	opts := Options{
-		successHandler: http.HandlerFunc(succHand),
 		failureHandler: correctReason(t, ErrNoReferer),
 	}
 	hand := New(opts)
@@ -81,7 +82,8 @@ func TestEmptyRefererFails(t *testing.T) {
 	}
 	writer := httptest.NewRecorder()
 
-	hand.ServeHTTP(writer, req)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
 
 	if writer.Code != http.StatusBadRequest {
 		t.Errorf("A POST request with no Referer should have failed with the code %d, but it didn't.",
@@ -91,7 +93,6 @@ func TestEmptyRefererFails(t *testing.T) {
 
 func TestDifferentOriginRefererFails(t *testing.T) {
 	opts := Options{
-		successHandler: http.HandlerFunc(succHand),
 		failureHandler: correctReason(t, ErrBadReferer),
 	}
 	hand := New(opts)
@@ -103,7 +104,8 @@ func TestDifferentOriginRefererFails(t *testing.T) {
 	req.Header.Set("Referer", "http://attack-on-golang.com")
 	writer := httptest.NewRecorder()
 
-	hand.ServeHTTP(writer, req)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
 
 	if writer.Code != http.StatusBadRequest {
 		t.Errorf("A POST request with a Referer from a different origin"+
@@ -113,7 +115,6 @@ func TestDifferentOriginRefererFails(t *testing.T) {
 
 func TestNoTokenFails(t *testing.T) {
 	opts := Options{
-		successHandler: http.HandlerFunc(succHand),
 		failureHandler: correctReason(t, ErrBadToken),
 	}
 	hand := New(opts)
@@ -128,7 +129,8 @@ func TestNoTokenFails(t *testing.T) {
 	}
 	writer := httptest.NewRecorder()
 
-	hand.ServeHTTP(writer, req)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
 
 	if writer.Code != http.StatusBadRequest {
 		t.Errorf("The check should've failed with the code %d, but instead, it"+
@@ -145,7 +147,6 @@ func TestNoTokenFails(t *testing.T) {
 
 func TestWrongTokenFails(t *testing.T) {
 	opts := Options{
-		successHandler: http.HandlerFunc(succHand),
 		failureHandler: correctReason(t, ErrBadToken),
 	}
 	hand := New(opts)
@@ -162,7 +163,8 @@ func TestWrongTokenFails(t *testing.T) {
 	}
 	writer := httptest.NewRecorder()
 
-	hand.ServeHTTP(writer, req)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
 
 	if writer.Code != http.StatusBadRequest {
 		t.Errorf("The check should've failed with the code %d, but instead, it"+
@@ -182,7 +184,6 @@ func TestWrongTokenFails(t *testing.T) {
 // from a normal http.Response than from the recorder
 func TestCorrectTokenPasses(t *testing.T) {
 	opts := Options{
-		successHandler: http.HandlerFunc(succHand),
 		failureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Errorf("Test failed. Reason: %v", Reason(r))
 		}),
@@ -190,7 +191,9 @@ func TestCorrectTokenPasses(t *testing.T) {
 	}
 	hand := New(opts)
 
-	server := httptest.NewServer(hand)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+
+	server := httptest.NewServer(chain)
 	defer server.Close()
 
 	// issue the first request to get the token
@@ -281,12 +284,12 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 	// it will mean that it prefered the header.
 
 	opts := Options{
-		successHandler: http.HandlerFunc(succHand),
-		TokenLength:    32,
+		TokenLength: 32,
 	}
 	hand := New(opts)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
 
-	server := httptest.NewServer(hand)
+	server := httptest.NewServer(chain)
 	defer server.Close()
 
 	resp, err := http.Get(server.URL)
@@ -326,12 +329,12 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 }
 
 func TestAddsVaryCookieHeader(t *testing.T) {
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
-	hand := New(opts)
+	hand := New()
 	writer := httptest.NewRecorder()
 	req := dummyGet()
 
-	hand.ServeHTTP(writer, req)
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
 
 	if !sContains(writer.Header()["Vary"], "Cookie") {
 		t.Errorf("CSRFHandler didn't add a `Vary: Cookie` header.")
@@ -349,12 +352,12 @@ func TestContextIsAccessibleWithGo17Context(t *testing.T) {
 		}
 	}
 
-	opts := Options{successHandler: http.HandlerFunc(succHand)}
-	hand := New(opts)
+	hand := New()
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
 
 	// we need a request that passes. Let's just use a safe method for that.
 	req := dummyGet()
 	writer := httptest.NewRecorder()
 
-	hand.ServeHTTP(writer, req)
+	chain.ServeHTTP(writer, req)
 }

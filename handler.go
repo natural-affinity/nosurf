@@ -12,71 +12,73 @@ func defaultFailureHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "", http.StatusBadRequest)
 }
 
-func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r = addNosurfContext(r)
-	defer ctxClear(r)
-	w.Header().Add("Vary", "Cookie")
+func (m *Middleware) Handler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-	var realToken []byte
+		r = addNosurfContext(r)
+		defer ctxClear(r)
+		w.Header().Add("Vary", "Cookie")
 
-	tokenCookie, err := r.Cookie(m.Options.baseCookie.Name)
-	if err == nil {
-		realToken = b64decode(tokenCookie.Value)
-	}
+		var realToken []byte
 
-	// If the length of the real token isn't what it should be,
-	// it has either been tampered with,
-	// or we're migrating onto a new algorithm for generating tokens,
-	// or it hasn't ever been set so far.
-	// In any case of those, we should regenerate it.
-	//
-	// As a consequence, CSRF check will fail when comparing the tokens later on,
-	// so we don't have to fail it just yet.
-	if len(realToken) != m.Options.TokenLength {
-		m.RegenerateToken(w, r)
-	} else {
-		ctxSetToken(r, realToken, m.Options.TokenLength)
-	}
+		tokenCookie, err := r.Cookie(m.Options.baseCookie.Name)
+		if err == nil {
+			realToken = b64decode(tokenCookie.Value)
+		}
 
-	if sContains(m.Options.SafeMethods, r.Method) {
-		// short-circuit with a success for safe methods
-		m.Options.successHandler.ServeHTTP(w, r)
-		return
-	}
+		// If the length of the real token isn't what it should be,
+		// it has either been tampered with,
+		// or we're migrating onto a new algorithm for generating tokens,
+		// or it hasn't ever been set so far.
+		// In any case of those, we should regenerate it.
+		//
+		// As a consequence, CSRF check will fail when comparing the tokens later on,
+		// so we don't have to fail it just yet.
+		if len(realToken) != m.Options.TokenLength {
+			m.RegenerateToken(w, r)
+		} else {
+			ctxSetToken(r, realToken, m.Options.TokenLength)
+		}
 
-	// if the request is secure, we enforce origin check
-	// for referer to prevent MITM of http->https requests
-	if r.URL.Scheme == "https" {
-		referer, err := url.Parse(r.Header.Get("Referer"))
+		if sContains(m.Options.SafeMethods, r.Method) {
+			// short-circuit with a success for safe methods
+			h.ServeHTTP(w, r)
+			return
+		}
 
-		// if we can't parse the referer or it's empty,
-		// we assume it's not specified
-		if err != nil || referer.String() == "" {
-			ctxSetReason(r, ErrNoReferer)
+		// if the request is secure, we enforce origin check
+		// for referer to prevent MITM of http->https requests
+		if r.URL.Scheme == "https" {
+			referer, err := url.Parse(r.Header.Get("Referer"))
+
+			// if we can't parse the referer or it's empty,
+			// we assume it's not specified
+			if err != nil || referer.String() == "" {
+				ctxSetReason(r, ErrNoReferer)
+				m.Options.failureHandler.ServeHTTP(w, r)
+				return
+			}
+
+			// if the referer doesn't share origin with the request URL,
+			// we have another error for that
+			if !sameOrigin(referer, r.URL) {
+				ctxSetReason(r, ErrBadReferer)
+				m.Options.failureHandler.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		// Finally, we check the token itself.
+		sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
+
+		if !verifyToken(realToken, sentToken, m.Options.TokenLength) {
+			ctxSetReason(r, ErrBadToken)
 			m.Options.failureHandler.ServeHTTP(w, r)
 			return
 		}
 
-		// if the referer doesn't share origin with the request URL,
-		// we have another error for that
-		if !sameOrigin(referer, r.URL) {
-			ctxSetReason(r, ErrBadReferer)
-			m.Options.failureHandler.ServeHTTP(w, r)
-			return
-		}
-	}
-
-	// Finally, we check the token itself.
-	sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
-
-	if !verifyToken(realToken, sentToken, m.Options.TokenLength) {
-		ctxSetReason(r, ErrBadToken)
-		m.Options.failureHandler.ServeHTTP(w, r)
-		return
-	}
-
-	// Everything else passed, handle the success.
-	m.Options.successHandler.ServeHTTP(w, r)
+		h.ServeHTTP(w, r)
+	})
 }
 
 // Generates a new token, sets it on the given request and returns it
