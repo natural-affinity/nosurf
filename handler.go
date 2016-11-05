@@ -28,14 +28,10 @@ func (m *Middleware) Handler(h http.Handler) http.Handler {
 	})
 }
 
+// Validate CSRF Token
 func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
-
 	var realToken []byte
-
-	tokenCookie, err := r.Cookie(m.Options.baseCookie.Name)
-	if err == nil {
-		realToken = b64decode(tokenCookie.Value)
-	}
+	realToken = FromCookie(r, m.Options.baseCookie.Name)
 
 	// If the length of the real token isn't what it should be,
 	// it has either been tampered with,

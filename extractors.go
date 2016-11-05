@@ -2,6 +2,16 @@ package nosurf
 
 import "net/http"
 
+// FromCookie (extract from cookie)
+func FromCookie(r *http.Request, name string) []byte {
+	cookie, err := r.Cookie(name)
+	if err != nil {
+		return nil
+	}
+
+	return b64decode(cookie.Value)
+}
+
 // FromHeader (extract from header)
 func FromHeader(r *http.Request, name string) []byte {
 	token := r.Header.Get(name)
