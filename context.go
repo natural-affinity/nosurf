@@ -35,7 +35,6 @@ func ctxCreate(r *http.Request) *http.Request {
 // or after the request has been served)
 func Token(req *http.Request) string {
 	ctx := req.Context().Value(nosurfKey).(*csrfContext)
-
 	return ctx.token
 }
 
@@ -45,7 +44,6 @@ func Token(req *http.Request) string {
 // Note that the same availability restrictions apply for Reason() as for Token().
 func Reason(req *http.Request) error {
 	ctx := req.Context().Value(nosurfKey).(*csrfContext)
-
 	return ctx.reason
 }
 

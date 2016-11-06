@@ -70,7 +70,7 @@ func TestContextIsAccessible(t *testing.T) {
 	chain.ServeHTTP(writer, req)
 }
 
-func TestEmptyRefererFails(t *testing.T) {
+func TestEmptyOriginAndRefererFails(t *testing.T) {
 	opts := Options{
 		failureHandler: correctReason(t, ErrNoReferer),
 	}
@@ -81,7 +81,6 @@ func TestEmptyRefererFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	writer := httptest.NewRecorder()
-
 	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
 	chain.ServeHTTP(writer, req)
 
@@ -91,17 +90,39 @@ func TestEmptyRefererFails(t *testing.T) {
 	}
 }
 
-func TestDifferentOriginRefererFails(t *testing.T) {
+func TestDifferentRefererFails(t *testing.T) {
 	opts := Options{
 		failureHandler: correctReason(t, ErrBadReferer),
 	}
-	hand := New(opts)
 
+	hand := New(opts)
 	req, err := http.NewRequest("POST", "https://dummy.us/", strings.NewReader("a=b"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Set("Referer", "http://attack-on-golang.com")
+	writer := httptest.NewRecorder()
+
+	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
+	chain.ServeHTTP(writer, req)
+
+	if writer.Code != http.StatusBadRequest {
+		t.Errorf("A POST request with a Referer from a different origin"+
+			"should have failed with the code %d, but it didn't.", writer.Code)
+	}
+}
+
+func TestDifferentOriginFails(t *testing.T) {
+	opts := Options{
+		failureHandler: correctReason(t, ErrBadReferer),
+	}
+
+	hand := New(opts)
+	req, err := http.NewRequest("POST", "https://dummy.us/", strings.NewReader("a=b"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Origin", "http://attack-on-golang.com")
 	writer := httptest.NewRecorder()
 
 	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))

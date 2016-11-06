@@ -45,7 +45,7 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	} // short-circuit with a success for safe methods
 
-	if err := validateReferer(r); err != nil {
+	if err := validateOrigin(r); err != nil {
 		return ctxSetReason(r, err)
 	} // ensure referrer is valid for HTTPS
 

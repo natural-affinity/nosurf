@@ -5,18 +5,25 @@ import (
 	"net/url"
 )
 
-// enforce referrer check for https to prevent MITM of http->https requests
-func validateReferer(r *http.Request) error {
+// enforce origin/referrer check for https to prevent MITM of http->https requests
+func validateOrigin(r *http.Request) error {
 	if r.URL.Scheme == "https" {
-		referer, err := url.Parse(r.Header.Get("Referer"))
+		origin, e1 := url.Parse(r.Header.Get("Origin"))
+		referer, e2 := url.Parse(r.Header.Get("Referer"))
 
-		if err != nil || referer.String() == "" {
-			return ErrNoReferer
+		if e1 != nil || origin.String() == "" {
+			if e2 != nil || referer.String() == "" {
+				return ErrNoReferer
+			} // ensure at least one header is present (origin or referer)
+
+			if !sameOrigin(referer, r.URL) {
+				return ErrBadReferer
+			} // ensure Referer Header is valid
 		}
 
-		if !sameOrigin(referer, r.URL) {
+		if !sameOrigin(origin, r.URL) {
 			return ErrBadReferer
-		}
+		} // ensure origin header is valid (if present)
 	}
 
 	return nil
