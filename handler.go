@@ -29,21 +29,17 @@ func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	realToken := FromCookie(r, m.Options.baseCookie.Name)
 	sentToken := m.Options.TokenExtractor(r, m.Options.TokenField)
 
-	//extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
-
-	// If the length of the real token isn't what it should be,
-	// it has either been tampered with,
-	// or we're migrating onto a new algorithm for generating tokens,
-	// or it hasn't ever been set so far.
-	// In any case of those, we should regenerate it.
-	//
-	// As a consequence, CSRF check will fail when comparing the tokens later on,
-	// so we don't have to fail it just yet.
+	// Always: Update Masked Token in Context
+	// Regenerate: New Visitor, Tampered, or Migration
 	if len(realToken) != m.Options.TokenLength {
 		m.RegenerateToken(w, r)
 	} else {
 		ctxSetToken(r, realToken, m.Options.TokenLength)
 	}
+
+	if m.Options.WriteResponseHeader {
+		w.Header().Set(m.Options.TokenField, Token(r))
+	} // ensure token is set on response header (if requested)
 
 	if sContains(m.Options.SafeMethods, r.Method) {
 		return nil

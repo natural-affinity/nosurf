@@ -147,9 +147,10 @@ func TestNoTokenFails(t *testing.T) {
 
 func TestWrongTokenFails(t *testing.T) {
 	opts := Options{
-		failureHandler: correctReason(t, ErrBadToken),
-		TokenField:     "csrf_token",
-		TokenExtractor: FromForm,
+		failureHandler:      correctReason(t, ErrBadToken),
+		TokenField:          "csrf_token",
+		TokenExtractor:      FromForm,
+		WriteResponseHeader: false,
 	}
 	hand := New(opts)
 
@@ -189,9 +190,10 @@ func TestCorrectTokenPasses(t *testing.T) {
 		failureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Errorf("Test failed. Reason: %v", Reason(r))
 		}),
-		TokenLength:    32,
-		TokenField:     "csrf_token",
-		TokenExtractor: FromForm,
+		TokenLength:         32,
+		TokenField:          "csrf_token",
+		TokenExtractor:      FromForm,
+		WriteResponseHeader: false,
 	}
 	hand := New(opts)
 
@@ -280,7 +282,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 	}
 }
 
-func TestDefaultHeaderOverFormValue(t *testing.T) {
+func TestUseHeaderOverFormValue(t *testing.T) {
 	// Let's do a nice trick to find out this:
 	// We'll set the correct token in the header
 	// And a wrong one in the form.
@@ -288,9 +290,8 @@ func TestDefaultHeaderOverFormValue(t *testing.T) {
 	// it will mean that it prefered the header.
 
 	opts := Options{
-		TokenLength:    32,
-		TokenField:     "X-CSRF",
-		TokenExtractor: FromHeader,
+		TokenLength: 32,
+		TokenField:  "X-CSRF",
 	}
 	hand := New(opts)
 	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
@@ -344,6 +345,33 @@ func TestAddsVaryCookieHeader(t *testing.T) {
 
 	if !sContains(writer.Header()["Vary"], "Cookie") {
 		t.Errorf("CSRFHandler didn't add a `Vary: Cookie` header.")
+	}
+}
+
+func TestAddsTokenResponseHeader(t *testing.T) {
+	opts := Options{
+		TokenLength:         32,
+		WriteResponseHeader: true,
+	}
+	handler := New(opts)
+	chain := alice.New(handler.Handler).Then(http.HandlerFunc(succHand))
+
+	server := httptest.NewServer(chain)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cookie := getRespCookie(resp, handler.Options.baseCookie.Name)
+	if cookie == nil {
+		t.Fatal("Cookie was not found in the response.")
+	}
+
+	header := getRespHeader(resp, handler.Options.TokenField)
+	if header == "" {
+		t.Fatal("Response header field not found")
 	}
 }
 

@@ -22,12 +22,13 @@ type Middleware struct {
 
 // Options is a struct for specifying configuration options for the middleware.
 type Options struct {
-	SafeMethods    []string
-	TokenLength    int
-	TokenField     string
-	TokenExtractor Extractor
-	failureHandler http.Handler
-	baseCookie     *http.Cookie
+	SafeMethods         []string
+	TokenLength         int
+	TokenField          string
+	TokenExtractor      Extractor
+	failureHandler      http.Handler
+	baseCookie          *http.Cookie
+	WriteResponseHeader bool
 }
 
 // New Constructs a configurable CSRF Middleware that calls desired handler

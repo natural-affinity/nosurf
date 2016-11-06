@@ -57,6 +57,11 @@ func getRespCookie(resp *http.Response, name string) *http.Cookie {
 	return nil
 }
 
+// Get Response Header
+func getRespHeader(resp *http.Response, name string) string {
+	return resp.Header.Get(name)
+}
+
 // Encodes a slice of key-value pairs to a form value string
 func formBody(pairs [][]string) string {
 	vals := url.Values{}
