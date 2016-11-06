@@ -12,6 +12,9 @@ var (
 	ErrBadToken   = errors.New("The CSRF token in the cookie doesn't match the one received in a form/header.")
 )
 
+// Extractor type for getting field value from request
+type Extractor func(r *http.Request, name string) []byte
+
 // Middleware for CSRF Protection
 type Middleware struct {
 	Options Options
@@ -21,8 +24,8 @@ type Middleware struct {
 type Options struct {
 	SafeMethods    []string
 	TokenLength    int
-	HeaderName     string
-	FormFieldName  string
+	TokenField     string
+	TokenExtractor Extractor
 	failureHandler http.Handler
 	baseCookie     *http.Cookie
 }
@@ -44,13 +47,13 @@ func New(options ...Options) *Middleware {
 		opts.TokenLength = 32
 	} // default token length (32 bytes)
 
-	if opts.HeaderName == "" {
-		opts.HeaderName = "X-CSRF-Token"
-	} // default header name
+	if opts.TokenExtractor == nil {
+		opts.TokenExtractor = FromHeader
+	} // default extractor (from header)
 
-	if opts.FormFieldName == "" {
-		opts.FormFieldName = "csrf_token"
-	} // default form field name
+	if opts.TokenField == "" {
+		opts.TokenField = "X-CSRF-Token"
+	} // default field (from header)
 
 	if opts.failureHandler == nil {
 		opts.failureHandler = http.HandlerFunc(defaultFailureHandler)

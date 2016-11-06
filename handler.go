@@ -27,7 +27,9 @@ func (m *Middleware) Handler(h http.Handler) http.Handler {
 // Validate CSRF Token
 func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
 	realToken := FromCookie(r, m.Options.baseCookie.Name)
-	sentToken := extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
+	sentToken := m.Options.TokenExtractor(r, m.Options.TokenField)
+
+	//extractToken(r, m.Options.HeaderName, m.Options.FormFieldName)
 
 	// If the length of the real token isn't what it should be,
 	// it has either been tampered with,

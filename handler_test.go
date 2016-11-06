@@ -148,13 +148,15 @@ func TestNoTokenFails(t *testing.T) {
 func TestWrongTokenFails(t *testing.T) {
 	opts := Options{
 		failureHandler: correctReason(t, ErrBadToken),
+		TokenField:     "csrf_token",
+		TokenExtractor: FromForm,
 	}
 	hand := New(opts)
 
 	vals := [][]string{
 		{"name", "Jolene"},
 		// this won't EVER be a valid value with the current scheme
-		{hand.Options.FormFieldName, "$#%^&"},
+		{hand.Options.TokenField, "$#%^&"},
 	}
 
 	req, err := http.NewRequest("POST", "http://dummy.us", formBodyR(vals))
@@ -187,7 +189,9 @@ func TestCorrectTokenPasses(t *testing.T) {
 		failureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Errorf("Test failed. Reason: %v", Reason(r))
 		}),
-		TokenLength: 32,
+		TokenLength:    32,
+		TokenField:     "csrf_token",
+		TokenExtractor: FromForm,
 	}
 	hand := New(opts)
 
@@ -211,7 +215,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 
 	vals := [][]string{
 		{"name", "Jolene"},
-		{hand.Options.FormFieldName, finalToken},
+		{hand.Options.TokenField, finalToken},
 	}
 
 	// Test usual POST
@@ -276,7 +280,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 	}
 }
 
-func TestPrefersHeaderOverFormValue(t *testing.T) {
+func TestDefaultHeaderOverFormValue(t *testing.T) {
 	// Let's do a nice trick to find out this:
 	// We'll set the correct token in the header
 	// And a wrong one in the form.
@@ -284,7 +288,9 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 	// it will mean that it prefered the header.
 
 	opts := Options{
-		TokenLength: 32,
+		TokenLength:    32,
+		TokenField:     "X-CSRF",
+		TokenExtractor: FromHeader,
 	}
 	hand := New(opts)
 	chain := alice.New(hand.Handler).Then(http.HandlerFunc(succHand))
@@ -306,7 +312,7 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 
 	vals := [][]string{
 		{"name", "Jolene"},
-		{hand.Options.FormFieldName, "a very wrong value"},
+		{hand.Options.TokenField, "a very wrong value"},
 	}
 
 	req, err := http.NewRequest("POST", server.URL, formBodyR(vals))
@@ -314,7 +320,7 @@ func TestPrefersHeaderOverFormValue(t *testing.T) {
 		t.Fatal(err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set(hand.Options.HeaderName, finalToken)
+	req.Header.Set(hand.Options.TokenField, finalToken)
 	req.AddCookie(cookie)
 
 	resp, err = http.DefaultClient.Do(req)
