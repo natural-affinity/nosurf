@@ -64,6 +64,8 @@ func New(options ...Options) *Middleware {
 		opts.baseCookie = &http.Cookie{}
 		opts.baseCookie.Name = "csrf_token"
 		opts.baseCookie.MaxAge = 365 * 24 * 60 * 60
+		opts.baseCookie.Secure = true
+		opts.baseCookie.HttpOnly = true
 	} // default cookie (duration)
 
 	return &Middleware{Options: opts}
