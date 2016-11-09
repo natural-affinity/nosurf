@@ -16,7 +16,7 @@ func (m *Middleware) Handler(h http.Handler) http.Handler {
 		w.Header().Add("Vary", "Cookie")
 
 		if err := m.Validate(w, r); err != nil {
-			m.Options.failureHandler.ServeHTTP(w, r)
+			m.Options.FailureHandler.ServeHTTP(w, r)
 			return
 		}
 
@@ -26,7 +26,7 @@ func (m *Middleware) Handler(h http.Handler) http.Handler {
 
 // Validate CSRF Token
 func (m *Middleware) Validate(w http.ResponseWriter, r *http.Request) error {
-	realToken := FromCookie(r, m.Options.baseCookie.Name)
+	realToken := FromCookie(r, m.Options.BaseCookie.Name)
 	sentToken := m.Options.TokenExtractor(r, m.Options.TokenField)
 
 	// Always: Update Masked Token in Context
@@ -62,7 +62,7 @@ func (m *Middleware) RegenerateToken(w http.ResponseWriter, r *http.Request) str
 	ctxSetToken(r, token, m.Options.TokenLength)
 
 	// Copy baseCookie (de-reference: shallow copy)
-	cookie := *m.Options.baseCookie
+	cookie := *m.Options.BaseCookie
 	cookie.Value = b64encode(token)
 	http.SetCookie(w, &cookie)
 

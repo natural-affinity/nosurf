@@ -72,7 +72,7 @@ func TestContextIsAccessible(t *testing.T) {
 
 func TestEmptyOriginAndRefererFails(t *testing.T) {
 	opts := Options{
-		failureHandler: correctReason(t, ErrNoReferer),
+		FailureHandler: correctReason(t, ErrNoReferer),
 	}
 	hand := New(opts)
 
@@ -92,7 +92,7 @@ func TestEmptyOriginAndRefererFails(t *testing.T) {
 
 func TestDifferentRefererFails(t *testing.T) {
 	opts := Options{
-		failureHandler: correctReason(t, ErrBadReferer),
+		FailureHandler: correctReason(t, ErrBadReferer),
 	}
 
 	hand := New(opts)
@@ -114,7 +114,7 @@ func TestDifferentRefererFails(t *testing.T) {
 
 func TestDifferentOriginFails(t *testing.T) {
 	opts := Options{
-		failureHandler: correctReason(t, ErrBadReferer),
+		FailureHandler: correctReason(t, ErrBadReferer),
 	}
 
 	hand := New(opts)
@@ -136,7 +136,7 @@ func TestDifferentOriginFails(t *testing.T) {
 
 func TestNoTokenFails(t *testing.T) {
 	opts := Options{
-		failureHandler: correctReason(t, ErrBadToken),
+		FailureHandler: correctReason(t, ErrBadToken),
 	}
 	hand := New(opts)
 
@@ -168,7 +168,7 @@ func TestNoTokenFails(t *testing.T) {
 
 func TestWrongTokenFails(t *testing.T) {
 	opts := Options{
-		failureHandler:      correctReason(t, ErrBadToken),
+		FailureHandler:      correctReason(t, ErrBadToken),
 		TokenField:          "csrf_token",
 		TokenExtractor:      FromForm,
 		WriteResponseHeader: false,
@@ -208,7 +208,7 @@ func TestWrongTokenFails(t *testing.T) {
 // from a normal http.Response than from the recorder
 func TestCorrectTokenPasses(t *testing.T) {
 	opts := Options{
-		failureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		FailureHandler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Errorf("Test failed. Reason: %v", Reason(r))
 		}),
 		TokenLength:         32,
@@ -229,7 +229,7 @@ func TestCorrectTokenPasses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cookie := getRespCookie(resp, hand.Options.baseCookie.Name)
+	cookie := getRespCookie(resp, hand.Options.BaseCookie.Name)
 	if cookie == nil {
 		t.Fatal("Cookie was not found in the response.")
 	}
@@ -240,28 +240,6 @@ func TestCorrectTokenPasses(t *testing.T) {
 		{"name", "Jolene"},
 		{hand.Options.TokenField, finalToken},
 	}
-
-	// Test usual POST
-	/*
-		{
-			req, err := http.NewRequest("POST", server.URL, formBodyR(vals))
-			if err != nil {
-				t.Fatal(err)
-			}
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.AddCookie(cookie)
-
-			resp, err = http.DefaultClient.Do(req)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-			if resp.StatusCode != 200 {
-				t.Errorf("The request should have succeeded, but it didn't. Instead, the code was %d",
-					resp.StatusCode)
-			}
-		}
-	*/
 
 	// Test multipart
 	{
@@ -325,7 +303,7 @@ func TestUseHeaderOverFormValue(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cookie := getRespCookie(resp, hand.Options.baseCookie.Name)
+	cookie := getRespCookie(resp, hand.Options.BaseCookie.Name)
 	if cookie == nil {
 		t.Fatal("Cookie was not found in the response.")
 	}
@@ -385,7 +363,7 @@ func TestAddsTokenResponseHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cookie := getRespCookie(resp, handler.Options.baseCookie.Name)
+	cookie := getRespCookie(resp, handler.Options.BaseCookie.Name)
 	if cookie == nil {
 		t.Fatal("Cookie was not found in the response.")
 	}

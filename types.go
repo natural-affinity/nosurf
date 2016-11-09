@@ -26,8 +26,8 @@ type Options struct {
 	TokenLength         int
 	TokenField          string
 	TokenExtractor      Extractor
-	failureHandler      http.Handler
-	baseCookie          *http.Cookie
+	FailureHandler      http.Handler
+	BaseCookie          *http.Cookie
 	WriteResponseHeader bool
 }
 
@@ -56,16 +56,16 @@ func New(options ...Options) *Middleware {
 		opts.TokenField = "X-CSRF-Token"
 	} // default field (from header)
 
-	if opts.failureHandler == nil {
-		opts.failureHandler = http.HandlerFunc(defaultFailureHandler)
+	if opts.FailureHandler == nil {
+		opts.FailureHandler = http.HandlerFunc(defaultFailureHandler)
 	} // default failure handler
 
-	if opts.baseCookie == nil {
-		opts.baseCookie = &http.Cookie{}
-		opts.baseCookie.Name = "csrf_token"
-		opts.baseCookie.MaxAge = 365 * 24 * 60 * 60
-		opts.baseCookie.Secure = true
-		opts.baseCookie.HttpOnly = true
+	if opts.BaseCookie == nil {
+		opts.BaseCookie = &http.Cookie{}
+		opts.BaseCookie.Name = "csrf_token"
+		opts.BaseCookie.MaxAge = 365 * 24 * 60 * 60
+		opts.BaseCookie.Secure = true
+		opts.BaseCookie.HttpOnly = true
 	} // default cookie (duration)
 
 	return &Middleware{Options: opts}
