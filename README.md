@@ -17,7 +17,7 @@ go get github.com/natural-affinity/nosurf
 * Customizable Options
 * Supports Go 1.7+ context
 * Supports any `http.Handler` framework
-* Supports masked tokens mitigate the BREACH attack.
+* Supports masked tokens to mitigate the BREACH attack.
 * Uses Double-Submit Cookie Method by-default
 * Supports JavaScript SPA via HTTP Header
 * Origin and Referrer Check as per [OWASP Guidelines](https://www.owasp.org/index.php/Cross-Site_Request_Forgery_(CSRF)_Prevention_Cheat_Sheet#Checking_the_Referer_Header)
@@ -155,8 +155,7 @@ func main() {
 
 
 # Special Thanks
-Justin Stankevičius ([@justinas](https://github.com/justinas) for the original library).  
-Auth0 Team ([@auth0](https://github.com/auth0)) for the inspiring JWT Middleware.
+Justin Stankevičius ([@justinas](https://github.com/justinas) for the original library).
 
 # License
 Released under the MIT License.
