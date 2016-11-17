@@ -48,11 +48,11 @@ type Options struct {
 
   // Function to be called post-validation errors
   // Default: http.Error(w, "", http.StatusBadRequest)
-  failureHandler      http.Handler
+  FailureHandler      http.Handler
 
   // Base Cookie properties to use for response
   // Default: Name (csrf_token), MaxAge: 1 Day, Secure, HttpOnly
-  baseCookie          *http.Cookie
+  BaseCookie          *http.Cookie
 
   // Flag indicating if token should be written to Header Automatically
   // Default: False
